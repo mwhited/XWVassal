@@ -226,8 +226,8 @@ public class AutoRangeFinder extends Decorator implements EditablePiece {
                 fovCommand = new FOVisualization(this.fov, micID);
                 bigCommand.execute();
                 fovCommand.execute();
-                bigCommand.append(fovCommand);
-                GameModule.getGameModule().sendAndLog(bigCommand);
+                fovCommand.append(bigCommand);
+                GameModule.getGameModule().sendAndLog(fovCommand);
                 return null;
             } // end of drawing visuals and announcing the results in the chatlog
             bigCommand.execute();
