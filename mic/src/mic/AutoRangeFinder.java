@@ -148,16 +148,15 @@ public class AutoRangeFinder extends Decorator implements EditablePiece {
     public Command keyEvent(KeyStroke stroke) {
 
         ArrayList<RangeFindings> rfindings = new ArrayList<RangeFindings>(); //findings compiled here
-        Command bigCommand = null;
 
+        String isShowingLines = (Decorator.getOutermost(this.piece)).getProperty("isShowingLines").toString();
 
         if (KeyStroke.getKeyStroke(KeyEvent.VK_M, KeyEvent.SHIFT_DOWN_MASK,false).equals(stroke)){
             if (this.fov != null && this.fov.getCount() > 0 && fovCommand != null) {
                 logToChatWithoutUndo("locally reacting to SHIFT-M");
                 this.fov = new FiringOptionsVisuals();
                 fovCommand = null;
-                this.piece.setProperty("isShowingLines","0");
-                return piece.keyEvent(stroke);
+                return null;
             }
         }
 
@@ -165,7 +164,9 @@ public class AutoRangeFinder extends Decorator implements EditablePiece {
         //identify which autorange option was used by using the static Map defined above in the globals, store it in an int
         whichOption = getKeystrokeToOptions(stroke);
         if (whichOption != -1 && stroke.isOnKeyRelease() == false) {
-
+            logToChat("isShowingLines " + isShowingLines);
+            if(isShowingLines.equals("1") && fovCommand != null & this.fov !=null && this.fov.getCount() > 0) return piece.keyEvent(stroke); //not ready to deal with anything until the normal vassal editor trigger has worked and changed this to "0"
+            else if(isShowingLines.equals("0") && this.fov !=null && this.fov.getCount() > 0) return piece.keyEvent(stroke); //the line garbage collector has not done its job yet, don't enter now.
             if(whichOption == 12) {
                 MULTILINES = true;
             }
@@ -178,16 +179,6 @@ public class AutoRangeFinder extends Decorator implements EditablePiece {
                 FluidAnim FA = new FluidAnim(this, whichOption);
                 logToChat("whichOption = " + Integer.toString(whichOption));
                 FA.run();
-            }
-
-            //if the firing options were already activated, change the piece's isShowingLines to 1 to start the removal process
-            if (this.fov != null && this.fov.getCount() > 0 && fovCommand != null) {
-                logToChatWithoutUndo("locally reacting to 2nd trigger, starting up clean up process");
-                String micID = this.piece.getProperty("micID").toString();
-                FOVisualizationClear fovclear = new FOVisualizationClear(micID);
-                fovclear.executeCommand();
-                GameModule.getGameModule().sendAndLog(fovclear);
-                return null;
             }
 
             twoPointOh = this.getInner().getState().contains("this_is_2pointoh");
@@ -213,34 +204,30 @@ public class AutoRangeFinder extends Decorator implements EditablePiece {
 
             //draw visuals and announce the results in the chat
             Command mBAC = makeBigAnnounceCommand(bigAnnounce, rfindings);
-            if(bigCommand ==null) bigCommand = mBAC;
-            else bigCommand.append(mBAC);
 
-            logToChatWithoutUndo("about to enter this.fov null? " + (this.fov==null?"yes":"no" + " count=" + this.fov.getCount() + " fovCommand null?" + (fovCommand==null?"yes":"no")));
-            if(this.fov !=null && this.fov.getCount() > 0 && fovCommand == null) {
+            logToChatWithoutUndo("about to enter. this.fov null? " + (this.fov==null?"yes":"no" + " count=" + this.fov.getCount() + " fovCommand null?" + (fovCommand==null?"yes":"no")));
+            if(this.fov !=null && this.fov.getCount() > 0 && fovCommand == null && isShowingLines.equals("1")) {
 
                 logToChatWithoutUndo("locally reacting to making a visual appear");
 
                 //reading off the Piece's unique ID and sending it off in a FOVisualization command, which should make it appear for all
                 String micID = this.piece.getProperty("micID").toString();
                 fovCommand = new FOVisualization(this.fov, micID);
-                bigCommand.execute();
+                fovCommand.append(mBAC);
                 fovCommand.execute();
-                fovCommand.append(bigCommand);
                 GameModule.getGameModule().sendAndLog(fovCommand);
                 return null;
             } // end of drawing visuals and announcing the results in the chatlog
-            bigCommand.execute();
-            GameModule.getGameModule().sendAndLog(bigCommand);
+            mBAC.execute();
+            GameModule.getGameModule().sendAndLog(mBAC);
             return null; // for some reason, there were no visuals to do, so send that message and don't send these special keystrokes to others classes/decorators
         } //end of dealing with keystrokes that are linked to autorange lines
         else if (KeyStroke.getKeyStroke(KeyEvent.VK_D, KeyEvent.CTRL_DOWN_MASK, false).equals(stroke)) {
             if (this.fov != null && this.fov.getCount() > 0 && fovCommand!=null) {
-                String micID = this.piece.getProperty("micID").toString();
-                Command clearIt = new FOVisualizationClear(micID);
+                fovCommand = null;
+                Command clearIt = this.piece.keyEvent(KeyStroke.getKeyStroke(KeyEvent.VK_M, KeyEvent.SHIFT_DOWN_MASK,false));;
                 clearIt.execute();
                 GameModule.getGameModule().sendAndLog(clearIt);
-                fovCommand = null;
             }
             return piece.keyEvent(stroke); //send the CTRL-D to deal with the ship whether there were visuals to remove or not
         } //end of deleting a piece and remove its pending visuals if there are any
